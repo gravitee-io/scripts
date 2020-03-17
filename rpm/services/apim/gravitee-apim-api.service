@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=gravitee
-ExecStart=/opt/graviteeio/prod/apim/api/bin/gravitee
+ExecStart=/opt/graviteeio/apim/api/bin/gravitee
 Restart=on-abort
 
 [Install]

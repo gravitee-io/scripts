@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=gravitee
 LimitNOFILE=65536
-ExecStart=/opt/graviteeio/prod/apim/gateway/bin/gravitee
+ExecStart=/opt/graviteeio/apim/gateway/bin/gravitee
 Restart=on-abort
 
 [Install]

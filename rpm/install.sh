@@ -13,6 +13,7 @@ declare ROOT_DIR="/opt/graviteeio"
 declare SYSTEM_SERVICES_DIR="/etc/systemd/system"
 declare HTTPD_CONF_DIR=""
 declare -r TMP_FOLDER="/tmp/graviteeio_$(date +"%Y%m%d_%H%M%S")"
+declare USER="gravitee"
 
 welcome() {
     echo
@@ -56,6 +57,15 @@ EXAMPLE
 
 log() {
     echo "$(date +"%Y-%m-%d %H:%M:%S") [$1] $2"
+}
+
+assert_user() {
+    found_user=$(cat /etc/passwd | egrep -e $USER | awk -F ":" '{ print $1}')
+    if [[ "$found_user" != "$USER" ]];then
+        sudo useradd $USER
+    else
+        echo "$found_user already exists, skipping..."
+    fi
 }
 
 assert_product() {
@@ -138,9 +148,12 @@ install_graviteeio() {
     local install_dir="${ROOT_DIR}/${GRAVITEE_PRODUCT}"
 
     # Configure from existing configuration
-    cp -fr ${install_dir}/.config/ui/constants.json ${install_dir}/ui
-    cp -fr ${install_dir}/.config/api/* ${install_dir}/api/config
-    cp -fr ${install_dir}/.config/gateway/* ${install_dir}/gateway/config
+    if [ -d $install_dir/.config ]
+    then
+        cp -fr ${install_dir}/.config/ui/constants.json ${install_dir}/ui
+        cp -fr ${install_dir}/.config/api/* ${install_dir}/api/config
+        cp -fr ${install_dir}/.config/gateway/* ${install_dir}/gateway/config
+    fi
 
     #  Configure Portal
     sed -i "s#http://localhost:8083/management/#http://18.216.181.56:8083/management/#g" ${install_dir}/ui/constants.json
@@ -188,12 +201,12 @@ deploy_services() {
 
     case ${GRAVITEE_PRODUCT} in
         apim)
-            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/rpm/services/apim/gravitee-apim-gateway.service
-            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/rpm/services/apim/gravitee-apim-api.service
+            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/apim/gravitee-apim-gateway.service
+            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/apim/gravitee-apim-api.service
             ;;
         am)
-            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/rpm/services/am/gravitee-am-gateway.service
-            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/rpm/services/am/gravitee-am-api.service
+            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/am/gravitee-am-gateway.service
+            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/am/gravitee-am-api.service
             ;;
     esac
 }
@@ -214,25 +227,29 @@ stop_services() {
     fi
 }
 
-stop_services() {
+#stop_services() {
     # Stop APIM processes
-    ps aux | grep [g]raviteeio-gateway | awk 'NR==1{print $2}'  | xargs -r kill -9
-    ps aux | grep [g]raviteeio-management-api | awk 'NR==1{print $2}'  | xargs -r kill -9
-}
+#    ps aux | grep [g]raviteeio-gateway | awk 'NR==1{print $2}'  | xargs -r kill -9
+#    ps aux | grep [g]raviteeio-management-api | awk 'NR==1{print $2}'  | xargs -r kill -9
+#}
 
 copy_config() {
     local install_dir="${ROOT_DIR}/${GRAVITEE_PRODUCT}"
 
-    mkdir -p ${install_dir}/.config/ui ; mkdir -p ${install_dir}/.config/api ; mkdir -p ${install_dir}/.config/gateway
-    cp -R ${install_dir}/ui/constants.json ${install_dir}/.config/ui/constants.json
-    cp -R ${install_dir}/api/config/* ${install_dir}/.config/api
-    cp -R ${install_dir}/gateway/config/* ${install_dir}/.config/gateway
+    if [ -d $install_dir ]
+    then
+        mkdir -p ${install_dir}/.config/ui ; mkdir -p ${install_dir}/.config/api ; mkdir -p ${install_dir}/.config/gateway
+        cp -R ${install_dir}/ui/constants.json ${install_dir}/.config/ui/constants.json
+        cp -R ${install_dir}/api/config/* ${install_dir}/.config/api
+        cp -R ${install_dir}/gateway/config/* ${install_dir}/.config/gateway
+    fi
 }
 
 install() {
     [[ -z "$GRAVITEE_VERSION" ]] && usage
     assert_product
-
+    assert_user
+    
     copy_config
 
     download_and_prepare_product
