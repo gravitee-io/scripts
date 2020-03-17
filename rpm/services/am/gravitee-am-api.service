@@ -1,0 +1,12 @@
+[Unit]
+Description=Gravitee.io Access Management - Management API
+After=network.target
+
+[Service]
+Type=simple
+User=gravitee
+ExecStart=/opt/graviteeio/am/api/bin/gravitee
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
