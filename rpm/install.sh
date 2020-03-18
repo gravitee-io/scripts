@@ -60,11 +60,13 @@ log() {
 }
 
 assert_user() {
+    log "${FUNCNAME}" "Check if user '${USER}' already exists..."
     found_user=$(cat /etc/passwd | egrep -e $USER | awk -F ":" '{ print $1}')
     if [[ "$found_user" != "$USER" ]];then
+        log "${FUNCNAME}" "User '${USER}' does not exist yet. Create it..."
         sudo useradd $USER
     else
-        echo "$found_user already exists, skipping..."
+        log "${FUNCNAME}" "User '${USER}' already exists, skipping..."
     fi
 }
 
@@ -75,29 +77,67 @@ assert_product() {
     esac
 }
 
+assert_components() {
+    if [ ! -z ${GRAVITEE_COMPONENTS:-} ];then
+        log "${FUNCNAME}" "Check components to install: '${GRAVITEE_COMPONENTS}'"
+        
+        IFS=',' read -ra GRAVITEE_COMPONENTS <<< "$GRAVITEE_COMPONENTS"
+
+        case ${GRAVITEE_PRODUCT} in
+            apim|am)  
+#               TODO: Check components
+                ;;  
+            *) 
+                echo "Unknown product [${GRAVITEE_PRODUCT}]" && usage
+                ;;
+        esac
+    else
+        # Set default components
+        case ${GRAVITEE_PRODUCT} in
+            apim|am)
+                GRAVITEE_COMPONENTS=("gateway" "api" "ui")
+                ;;
+            *)
+                ;;
+        esac
+    fi
+
+#    exists_in_array "gateway" "${GRAVITEE_COMPONENTS[@]}"
+    log "${FUNCNAME}" "Components to install: ${GRAVITEE_COMPONENTS[*]}"
+#    exit 0;
+}
+
+exists_in_array() {
+    arr=("$@")
+    for item in "${arr[@]}"; do
+        echo $item
+        [[ $1 == "$item" ]] && echo "$1 present in the array"
+    done
+}
+
 ### Install MongoDB
 # Doc: https://docs.mongodb.com/v3.6/tutorial/install-mongodb-on-amazon/#install-mongodb-community-edition
 install_mongo() {
-        echo "[mongodb-org-3.6]
+    echo "[mongodb-org-3.6]
 name=MongoDB Repository
 baseurl=https://repo.mongodb.org/yum/amazon/2013.03/mongodb-org/3.6/x86_64/
 gpgcheck=1
 enabled=1
 gpgkey=https://www.mongodb.org/static/pgp/server-3.6.asc" | sudo tee /etc/yum.repos.d/mongodb-org-3.6.repo > /dev/null
 
-        sudo yum install -y mongodb-org
-        sudo systemctl start mongod
+    sudo yum install -y mongodb-org
+    sudo systemctl start mongod
 }
 
 ### Install OpenJDK
 install_openjdk() {
-        sudo yum install -y java-1.8.0-openjdk
+    sudo yum install -y java-1.8.0-openjdk
 }
 
 ### Install Elasticsearch
 # Doc: https://www.elastic.co/guide/en/elasticsearch/reference/6.6/rpm.html#rpm-repo
 install_elasticsearch() {
-        echo "[elasticsearch-6.x]
+    echo "[elasticsearch-6.x]
 name=Elasticsearch repository for 6.x packages
 baseurl=https://artifacts.elastic.co/packages/6.x/yum
 gpgcheck=1
@@ -105,8 +145,8 @@ gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
 enabled=1
 autorefresh=1
 type=rpm-md" | sudo tee /etc/yum.repos.d/elasticsearch.repo > /dev/null
-        sudo yum install -y elasticsearch
-        sudo systemctl start elasticsearch
+    sudo yum install -y elasticsearch
+    sudo systemctl start elasticsearch
 }
 
 download_and_prepare_product() {
@@ -126,7 +166,7 @@ download_and_prepare_product() {
     local dest_file_path="${TMP_FOLDER}/${filename}"
     log "${FUNCNAME}" "Download ${GRAVITEE_PRODUCT} version ${GRAVITEE_VERSION} into ${dest_file_path}"
     mkdir -p ${TMP_FOLDER}
-    wget -O ${dest_file_path} "${url}${filename}"
+    wget --progress=bar:force -O ${dest_file_path} "${url}${filename}"
 
     log "${FUNCNAME}" "Check sha1"
     wget -nv -O ${dest_file_path}.sha1 "${url}${filename}.sha1"
@@ -169,8 +209,7 @@ install_graviteeio() {
         install_snaplogic_extensions
     fi
 
-    nohup ${ROOT_DIR}/${GRAVITEE_PRODUCT}/gateway/bin/gravitee > /dev/null 2>&1 &
-    nohup ${ROOT_DIR}/${GRAVITEE_PRODUCT}/api/bin/gravitee > /dev/null 2>&1 &
+    sudo chown -R $USER:$USER ${ROOT_DIR}
 }
 
 install_portal_customizations() {
@@ -189,49 +228,60 @@ install_snaplogic_extensions() {
 
 ### Install Node HTTP server
 install_http_server() {
-        curl --silent --location https://rpm.nodesource.com/setup_13.x | sudo bash
-        sudo yum install -y nodejs
-        sudo npm install http-server -g
-        cd ${ROOT_DIR}/${GRAVITEE_PRODUCT}/ui
-        nohup http-server -p 80 > /dev/null 2>&1 &
+    curl --silent --location https://rpm.nodesource.com/setup_13.x | sudo bash
+    sudo yum install -y nodejs
+    sudo npm install http-server -g
+    cd ${ROOT_DIR}/${GRAVITEE_PRODUCT}/ui
+    nohup http-server -p 80 > /dev/null 2>&1 &
 }
 
 deploy_services() {
-    log "${FUNCNAME}" "copy services"
+    log "${FUNCNAME}" "Adding Gravitee.io system services"
 
     case ${GRAVITEE_PRODUCT} in
         apim)
-            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/apim/gravitee-apim-gateway.service
-            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/apim/gravitee-apim-api.service
+            wget -nv --progress=bar:force -O ${SYSTEM_SERVICES_DIR}/gravitee-apim-gateway.service https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/apim/gravitee-apim-gateway.service
+            wget -nv --progress=bar:force -O ${SYSTEM_SERVICES_DIR}/gravitee-apim-api.service https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/apim/gravitee-apim-api.service
             ;;
         am)
-            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/am/gravitee-am-gateway.service
-            wget -P ${SYSTEM_SERVICES_DIR} https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/am/gravitee-am-api.service
+            wget -nv --progress=bar:force -O ${SYSTEM_SERVICES_DIR}/gravitee-am-gateway.service https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/am/gravitee-am-gateway.service
+            wget -nv --progress=bar:force -O ${SYSTEM_SERVICES_DIR}/gravitee-am-api.service https://raw.githubusercontent.com/gravitee-io/scripts/master/rpm/services/am/gravitee-am-api.service
             ;;
     esac
+
+    # Force reload of the daemon to take car about the new services
+    sudo systemctl daemon-reload
+}
+
+undeploy_services() {
+    log "${FUNCNAME}" "Removing Gravitee.io system services"
+
+    case ${GRAVITEE_PRODUCT} in
+        apim)
+            rm -fr ${SYSTEM_SERVICES_DIR}/gravitee-apim-gateway.service
+            rm -fr ${SYSTEM_SERVICES_DIR}/gravitee-apim-api.service
+            ;;
+        am)
+            rm -fr ${SYSTEM_SERVICES_DIR}/gravitee-am-gateway.service
+            rm -fr ${SYSTEM_SERVICES_DIR}/gravitee-am-api.service
+            ;;
+    esac
+
+    # Force reload of the daemon to take car about the new services
+    sudo systemctl daemon-reload
 }
 
 stop_services() {
     if [[ -f ${SYSTEM_SERVICES_DIR}/gravitee-${GRAVITEE_PRODUCT}-api.service ]]; then
         log "${FUNCNAME}" "Stop Gravitee.io ${GRAVITEE_PRODUCT} service gravitee-${GRAVITEE_PRODUCT}-api"
-        if [[ "${DEBUG}" != "true" ]]; then
-            sudo systemctl stop gravitee-${GRAVITEE_PRODUCT}-api
-        fi
+        sudo systemctl stop gravitee-${GRAVITEE_PRODUCT}-api
     fi
 
     if [[ -f ${SYSTEM_SERVICES_DIR}/gravitee-${GRAVITEE_PRODUCT}-gateway.service ]]; then
         log "${FUNCNAME}" "Stop Gravitee.io ${GRAVITEE_PRODUCT} service gravitee-${GRAVITEE_PRODUCT}-gateway"
-        if [[ "${DEBUG}" != "true" ]]; then
-            sudo systemctl stop gravitee-${GRAVITEE_PRODUCT}-gateway
-        fi
+        sudo systemctl stop gravitee-${GRAVITEE_PRODUCT}-gateway
     fi
 }
-
-#stop_services() {
-    # Stop APIM processes
-#    ps aux | grep [g]raviteeio-gateway | awk 'NR==1{print $2}'  | xargs -r kill -9
-#    ps aux | grep [g]raviteeio-management-api | awk 'NR==1{print $2}'  | xargs -r kill -9
-#}
 
 copy_config() {
     local install_dir="${ROOT_DIR}/${GRAVITEE_PRODUCT}"
@@ -248,13 +298,12 @@ copy_config() {
 install() {
     [[ -z "$GRAVITEE_VERSION" ]] && usage
     assert_product
+    assert_components
     assert_user
     
     copy_config
 
     download_and_prepare_product
-
-    stop_services
 
     uninstall
 
@@ -284,11 +333,36 @@ install() {
 
     log "${FUNCNAME}" "Install Gravitee.io systemd services"
     deploy_services
+
+    log "${FUNCNAME}" "Installation done."
+    log "${FUNCNAME}" "You can start Gravitee.io services using:"
+    log "${FUNCNAME}" "    sudo systemctl start gravitee-${GRAVITEE_PRODUCT}-gateway.service"
+    log "${FUNCNAME}" "    sudo systemctl start gravitee-${GRAVITEE_PRODUCT}-api.service"
+}
+
+usage() {
+    echo "NAME
+    $(basename "$0")  -- a program to install/remove a gravitee component
+SYNOPSYS
+    $(basename "$0") [-p product] [-v version] [install uninstall]
+    $(basename "$0") -h
+DESCRIPTION
+    where:
+    -v         the Gravitee.io product version
+    -h         help
+    install    install/upgrade a version of a component
+    uninstall  uninstall a version
+EXAMPLE
+    gravitee-cli.sh -p apim -v 1.30.3 install
+    gravitee-cli.sh -p apim uninstall
+"
+    exit
 }
 
 uninstall() {
     assert_product
     stop_services
+    undeploy_services
 
     local install_dir="${ROOT_DIR}/${GRAVITEE_PRODUCT}"
 
@@ -301,15 +375,15 @@ uninstall() {
 }
 
 ##################################################
-# Main
+# Startup
 ##################################################
 
-while getopts 'dh:p:v:' o
+while getopts ':h:p:v:c:' o
 do
     case $o in
     p) GRAVITEE_PRODUCT=$OPTARG ;;
+    c) GRAVITEE_COMPONENTS=$OPTARG ;;
     v) GRAVITEE_VERSION=$OPTARG ;;
-    d) DEBUG="true" ;;
     h|*) usage ;;
     esac
 done
