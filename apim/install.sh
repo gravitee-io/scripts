@@ -108,10 +108,10 @@ install()
 {
 	case "$os" in
 		aws|amzn)
-			./amzn/install_amazon.sh
+			curl -L https://raw.githubusercontent.com/gravitee-io/scripts/master/apim/amzn/install_amazon.sh | bash
 		;;
 		ol|centos|redhatenterpriseserver)
-			./redhat/install_redhat.sh
+			curl -L https://raw.githubusercontent.com/gravitee-io/scripts/master/apim/redhat/install_redhat.sh | bash
 		;;
 		*)
 			echo "Install script called with unknown OS \`$os'" >&2
