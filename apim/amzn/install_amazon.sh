@@ -33,7 +33,7 @@ type=rpm-md" | sudo tee /etc/yum.repos.d/elasticsearch.repo > /dev/null
 install_graviteeio() {
     echo "[graviteeio]
 name=graviteeio
-baseurl=https://packagecloud.io/graviteeio/rpms/el/7/$basearch
+baseurl=https://packagecloud.io/graviteeio/rpms/el/7/\$basearch
 gpgcheck=0
 enabled=1
 gpgkey=https://packagecloud.io/graviteeio/rpms/gpgkey
