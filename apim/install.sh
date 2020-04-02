@@ -110,7 +110,7 @@ install()
 		aws|amzn)
 			curl -L https://raw.githubusercontent.com/gravitee-io/scripts/master/apim/amzn/install_amazon.sh | bash
 		;;
-		ol|centos|redhatenterpriseserver)
+		ol|centos|rhel)
 			curl -L https://raw.githubusercontent.com/gravitee-io/scripts/master/apim/redhat/install_redhat.sh | bash
 		;;
         sles)
