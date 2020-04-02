@@ -1,7 +1,7 @@
 #!/bin/bash
 
 install_nginx() {
-    sudo yum install -y epel-release
+    sudo yum install -y epel-release policycoreutils-python-utils
     sudo yum install -y nginx
 }
 
@@ -44,6 +44,8 @@ metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
     sudo yum install -y graviteeio-apim
     sudo systemctl daemon-reload
     sudo systemctl start graviteeio-apim-gateway graviteeio-apim-management-api
+#    sudo semanage port -a -t http_port_t -p tcp 8084
+    sudo semanage port -m -t http_port_t -p tcp 8084
     sudo systemctl restart nginx
 }
 
