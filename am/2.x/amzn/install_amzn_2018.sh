@@ -1,8 +1,8 @@
 #!/bin/bash
 
 install_nginx() {
-    sudo amazon-linux-extras install nginx1.12
-    sudo systemctl start nginx
+    sudo yum install nginx
+    sudo service nginx start
 }
 
 install_mongo() {
@@ -14,20 +14,7 @@ enabled=1
 gpgkey=https://www.mongodb.org/static/pgp/server-3.6.asc" | sudo tee /etc/yum.repos.d/mongodb-org-3.6.repo > /dev/null
 
     sudo yum install -y mongodb-org
-    sudo systemctl start mongod
-}
-
-install_elasticsearch() {
-    echo "[elasticsearch-7.x]
-name=Elasticsearch repository for 7.x packages
-baseurl=https://artifacts.elastic.co/packages/7.x/yum
-gpgcheck=1
-gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
-enabled=1
-autorefresh=1
-type=rpm-md" | sudo tee /etc/yum.repos.d/elasticsearch.repo > /dev/null
-    sudo yum install -y elasticsearch
-    sudo systemctl start elasticsearch
+    sudo service mongod start
 }
 
 install_graviteeio() {
@@ -42,25 +29,28 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
     sudo yum -q makecache -y --disablerepo='*' --enablerepo='graviteeio'
     sudo yum install -y graviteeio-apim
-    sudo systemctl daemon-reload
-    sudo systemctl start graviteeio-apim-gateway graviteeio-apim-management-api
+    sudo service graviteeio-apim-gateway start
+    sudo service graviteeio-apim-management-api start
+    sudo sed -i -e "s/4200/8094/g" /opt/graviteeio/am/management-ui/constants.json
     http_response=$(curl -w "%{http_code}" -o /tmp/curl_body "http://169.254.169.254/latest/meta-data/public-ipv4")
     if [ $http_response == "200" ]; then
-        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/apim/management-ui/constants.json
+        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/am/management-ui/constants.json
     fi
 
-    sudo systemctl restart nginx
+    sudo service nginx restart
 }
 
 install_openjdk() {
-    sudo amazon-linux-extras install java-openjdk11
+    sudo yum install java-1.8.0-openjdk -y
+    sudo /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java
+    sudo /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac
+    sudo yum remove java-1.7.0-openjdk -y
 }
 
 main() {
     install_openjdk
     install_nginx
     install_mongo
-    install_elasticsearch
     install_graviteeio
 }
 
