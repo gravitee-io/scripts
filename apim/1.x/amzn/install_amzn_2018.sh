@@ -43,11 +43,10 @@ metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
     sudo yum -q makecache -y --disablerepo='*' --enablerepo='graviteeio'
     sudo yum install -y graviteeio-apim
     sudo service graviteeio-apim-gateway start
-    sudo service graviteeio-apim-management-api start
-    sudo sed -i -e "s/4200/8084/g" /opt/graviteeio/am/management-ui/constants.json
+    sudo service graviteeio-apim-management-api starts
     http_response=$(curl -w "%{http_code}" -o /tmp/curl_body "http://169.254.169.254/latest/meta-data/public-ipv4")
     if [ $http_response == "200" ]; then
-        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/am/management-ui/constants.json
+        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/apim/management-ui/constants.json
     fi
 
     sudo service nginx restart
