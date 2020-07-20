@@ -41,13 +41,13 @@ sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
     sudo yum -q makecache -y --disablerepo='*' --enablerepo='graviteeio'
-    sudo yum install -y graviteeio-apim-3x
+    sudo yum install -y graviteeio-am-3x
     sudo systemctl daemon-reload
-    sudo systemctl start graviteeio-apim-gateway graviteeio-apim-rest-api
+    sudo systemctl start graviteeio-am-gateway graviteeio-am-management-api
+    sudo sed -i -e "s/4200/8094/g" /opt/graviteeio/am/management-ui/constants.json
     http_response=$(curl -w "%{http_code}" -o /tmp/curl_body "http://169.254.169.254/latest/meta-data/public-ipv4")
     if [ $http_response == "200" ]; then
-        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/apim/management-ui/constants.json
-        sudo sed -i -e "s;/portal;http://$(cat /tmp/curl_body):8083/portal;g" /opt/graviteeio/apim/portal-ui/assets/config.json
+        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/am/management-ui/constants.json
     fi
 
     sudo systemctl restart nginx

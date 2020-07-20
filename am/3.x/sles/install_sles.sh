@@ -13,22 +13,6 @@ install_mongo() {
     sudo systemctl start mongod
 }
 
-install_elasticsearch() {
-    sudo rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
-    echo "[elasticsearch]
-name=Elasticsearch repository for 7.x packages
-baseurl=https://artifacts.elastic.co/packages/7.x/yum
-gpgcheck=1
-gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
-enabled=1
-autorefresh=1
-type=rpm-md" | sudo tee /etc/zypp/repos.d/elasticsearch.repo > /dev/null
-    sudo zypper modifyrepo --enable elasticsearch
-    sudo zypper -n install elasticsearch
-    sudo zypper modifyrepo --disable elasticsearch
-    sudo systemctl start elasticsearch
-}
-
 install_graviteeio() {
     echo "[graviteeio]
 name=graviteeio
@@ -40,13 +24,13 @@ sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300
 type=rpm-md" | sudo tee /etc/zypp/repos.d/graviteeio.repo > /dev/null
-    sudo zypper -n install graviteeio-apim-3x
+    sudo zypper -n install graviteeio-am-3x
     sudo systemctl daemon-reload
-    sudo systemctl start graviteeio-apim-gateway graviteeio-apim-rest-api
+    sudo systemctl start graviteeio-am-gateway graviteeio-am-management-api
+    sudo sed -i -e "s/4200/8094/g" /opt/graviteeio/am/management-ui/constants.json
     http_response=$(curl -w "%{http_code}" -o /tmp/curl_body "http://169.254.169.254/latest/meta-data/public-ipv4")
     if [ $http_response == "200" ]; then
-        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/apim/management-ui/constants.json
-        sudo sed -i -e "s;/portal;http://$(cat /tmp/curl_body):8083/portal;g" /opt/graviteeio/apim/portal-ui/assets/config.json
+        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/am/management-ui/constants.json
     fi
     sudo systemctl restart nginx
 }
@@ -59,7 +43,6 @@ main() {
     install_openjdk
     install_nginx
     install_mongo
-    install_elasticsearch
     install_graviteeio
 }
 
