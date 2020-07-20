@@ -41,7 +41,7 @@ sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
     sudo yum -q makecache -y --disablerepo='*' --enablerepo='graviteeio'
-    sudo yum install -y graviteeio-apim
+    sudo yum install -y graviteeio-apim-3x
     sudo service graviteeio-apim-gateway start
     sudo service graviteeio-apim-rest-api start
     http_response=$(curl -w "%{http_code}" -o /tmp/curl_body "http://169.254.169.254/latest/meta-data/public-ipv4")

@@ -40,7 +40,7 @@ sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300
 type=rpm-md" | sudo tee /etc/zypp/repos.d/graviteeio.repo > /dev/null
-    sudo zypper -n install graviteeio-apim
+    sudo zypper -n install graviteeio-apim-3x
     sudo systemctl daemon-reload
     sudo systemctl start graviteeio-apim-gateway graviteeio-apim-rest-api
     http_response=$(curl -w "%{http_code}" -o /tmp/curl_body "http://169.254.169.254/latest/meta-data/public-ipv4")
