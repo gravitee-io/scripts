@@ -36,7 +36,6 @@ metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
     if [ $http_response == "200" ]; then
         sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/am/management-ui/constants.json
     fi
-#    sudo semanage port -a -t http_port_t -p tcp 8084
     sudo semanage port -m -t http_port_t -p tcp 8084
     sudo systemctl restart nginx
 }

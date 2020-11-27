@@ -49,8 +49,8 @@ metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
         sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/apim/management-ui/constants.json
         sudo sed -i -e "s;/portal;http://$(cat /tmp/curl_body):8083/portal;g" /opt/graviteeio/apim/portal-ui/assets/config.json
     fi
-#    sudo semanage port -a -t http_port_t -p tcp 8084
     sudo semanage port -m -t http_port_t -p tcp 8084
+    sudo semanage port -a -t http_port_t -p tcp 8085
     sudo systemctl restart nginx
 }
 
