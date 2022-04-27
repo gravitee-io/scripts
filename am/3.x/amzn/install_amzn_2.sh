@@ -17,19 +17,6 @@ gpgkey=https://www.mongodb.org/static/pgp/server-4.4.asc" | sudo tee /etc/yum.re
     sudo systemctl start mongod
 }
 
-install_elasticsearch() {
-    echo "[elasticsearch-7.x]
-name=Elasticsearch repository for 7.x packages
-baseurl=https://artifacts.elastic.co/packages/7.x/yum
-gpgcheck=1
-gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
-enabled=1
-autorefresh=1
-type=rpm-md" | sudo tee /etc/yum.repos.d/elasticsearch.repo > /dev/null
-    sudo yum install -y elasticsearch
-    sudo systemctl start elasticsearch
-}
-
 install_graviteeio() {
     echo "[graviteeio]
 name=graviteeio
@@ -61,7 +48,6 @@ main() {
     install_openjdk
     install_nginx
     install_mongo
-    install_elasticsearch
     install_graviteeio
 }
 
