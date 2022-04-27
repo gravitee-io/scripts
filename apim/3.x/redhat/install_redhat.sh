@@ -1,17 +1,16 @@
 #!/bin/bash
 
 install_nginx() {
-    sudo yum install -y epel-release policycoreutils-python-utils
     sudo yum install -y nginx
 }
 
 install_mongo() {
-    echo "[mongodb-org-3.6]
+    echo "[mongodb-org-4.4]
 name=MongoDB Repository
-baseurl=https://repo.mongodb.org/yum/amazon/2013.03/mongodb-org/3.6/x86_64/
+baseurl=https://repo.mongodb.org/yum/redhat/\$releasever/mongodb-org/4.4/x86_64/
 gpgcheck=1
 enabled=1
-gpgkey=https://www.mongodb.org/static/pgp/server-3.6.asc" | sudo tee /etc/yum.repos.d/mongodb-org-3.6.repo > /dev/null
+gpgkey=https://www.mongodb.org/static/pgp/server-4.4.asc" | sudo tee /etc/yum.repos.d/mongodb-org-4.4.repo > /dev/null
 
     sudo yum install -y mongodb-org
     sudo systemctl start mongod
@@ -49,16 +48,54 @@ metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
         sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/apim/management-ui/constants.json
         sudo sed -i -e "s;/portal;http://$(cat /tmp/curl_body):8083/portal;g" /opt/graviteeio/apim/portal-ui/assets/config.json
     fi
-    sudo semanage port -m -t http_port_t -p tcp 8084
-    sudo semanage port -a -t http_port_t -p tcp 8085
+
+    ui_port=$(sudo semanage port -l | grep 8084 | wc -l)
+    if [[ "$ui_port" -eq 0 ]]
+    then
+        sudo semanage port -a -t http_port_t -p tcp 8084
+    else
+        sudo semanage port -m -t http_port_t -p tcp 8084
+    fi
+
+    portal_port=$(sudo semanage port -l | grep 8085 | wc -l)
+    if [[ "$portal_port" -eq 0 ]]
+    then
+        sudo semanage port -a -t http_port_t -p tcp 8085
+    else
+        sudo semanage port -m -t http_port_t -p tcp 8085
+    fi
+
     sudo systemctl restart nginx
 }
 
 install_openjdk() {
-    sudo yum install -y java-11-openjdk-devel
+    sudo yum install -y java-17-openjdk-devel
+}
+
+install_tools() {
+    os=`cat /etc/redhat-release  | awk '{ print tolower($1) }'`
+    version=$(awk -F'=' '/VERSION_ID/{ gsub(/"/,""); print $2}' /etc/os-release | cut -d. -f1)
+    echo "Detect version: $os/$version"
+
+    if [[ "$os" == "centos" && "$version" -eq 8 ]]
+    then
+        echo "Update Centos Stream"
+        sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+        sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+        sudo yum update -y
+    fi
+
+    if [[ "$version" -lt 8 ]]
+    then
+        echo "Install specific tools for RHEL < 8"
+        sudo yum install -y epel-release
+    fi
+
+    sudo yum install -y policycoreutils-python-utils
 }
 
 main() {
+    install_tools
     install_openjdk
     install_nginx
     install_mongo
