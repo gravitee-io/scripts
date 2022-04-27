@@ -7,8 +7,8 @@ install_nginx() {
 }
 
 install_mongo() {
-    sudo rpm --import https://www.mongodb.org/static/pgp/server-3.6.asc
-    sudo zypper addrepo --gpgcheck "https://repo.mongodb.org/zypper/suse/12/mongodb-org/3.6/x86_64/" mongodb
+    sudo rpm --import https://www.mongodb.org/static/pgp/server-4.4.asc
+    sudo zypper addrepo --gpgcheck "https://repo.mongodb.org/zypper/suse/12/mongodb-org/4.4/x86_64/" mongodb
     sudo zypper -n install mongodb-org
     sudo systemctl start mongod
 }
