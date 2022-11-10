@@ -6,9 +6,15 @@ install_nginx() {
 }
 
 install_mongo() {
+    case "`uname -i`" in
+      x86_64|amd64)
+        baseurl=https://repo.mongodb.org/yum/amazon/2/mongodb-org/4.4/x86_64/;;
+      aarch64)
+        baseurl=https://repo.mongodb.org/yum/amazon/2/mongodb-org/4.4/aarch64/;;
+    esac
     echo "[mongodb-org-4.4]
 name=MongoDB Repository
-baseurl=https://repo.mongodb.org/yum/amazon/2/mongodb-org/4.4/x86_64/
+baseurl=${baseurl}
 gpgcheck=1
 enabled=1
 gpgkey=https://www.mongodb.org/static/pgp/server-4.4.asc" | sudo tee /etc/yum.repos.d/mongodb-org-4.4.repo > /dev/null
