@@ -26,6 +26,7 @@ type=rpm-md" | sudo tee /etc/zypp/repos.d/elasticsearch.repo > /dev/null
     sudo zypper modifyrepo --enable elasticsearch
     sudo zypper -n install elasticsearch
     sudo zypper modifyrepo --disable elasticsearch
+    sudo sed "0,/xpack.security.enabled:.*/s/xpack.security.enabled:.*/xpack.security.enabled: false/" -i /etc/elasticsearch/elasticsearch.yml
     sudo systemctl start elasticsearch
 }
 
