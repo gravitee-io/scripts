@@ -26,7 +26,7 @@ install_elasticsearch() {
     echo "[elastic-8.x]
 name=Elastic repository for 8.x packages
 baseurl=https://artifacts.elastic.co/packages/8.x/yum
-gpgcheck=1
+gpgcheck=0
 gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
 enabled=1
 autorefresh=1
