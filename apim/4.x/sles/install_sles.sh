@@ -8,7 +8,14 @@ install_nginx() {
 
 install_mongo() {
     sudo rpm --import https://www.mongodb.org/static/pgp/server-6.0.asc
-    sudo zypper addrepo --gpgcheck "https://repo.mongodb.org/zypper/suse/15/mongodb-org/6.0/x86_64/" mongodb
+
+    version=$(cut -d "=" -f2 <<< `cat /etc/os-release | grep VERSION_ID` | tr -d '"')
+    if [[ $version = 12* ]]; then
+      sudo zypper addrepo --gpgcheck "https://repo.mongodb.org/zypper/suse/12/mongodb-org/6.0/x86_64/" mongodb
+    else
+      sudo zypper addrepo --gpgcheck "https://repo.mongodb.org/zypper/suse/15/mongodb-org/6.0/x86_64/" mongodb
+    fi
+    
     sudo zypper -n install mongodb-org
     sudo systemctl start mongod
 }
