@@ -36,6 +36,48 @@ type=rpm-md" | sudo tee /etc/yum.repos.d/elasticsearch.repo > /dev/null
     sudo systemctl start elasticsearch
 }
 
+get_current_public_ip() {
+  local public_ip
+
+  #case of an Azure VM
+  public_ip="$(curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance/network/interface?api-version=2021-02-01&format=json" | jq -r '.[].ipv4.ipAddress[].publicIpAddress')"
+  if echo -n "${public_ip}" | grep -q -E '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
+  then
+    echo "${public_ip}"
+    return 0
+  fi
+
+  #case of an AWS EC2 VM
+  public_ip="$(curl -s "http://169.254.169.254/latest/meta-data/public-ipv4")"
+  if echo -n "${public_ip}" | grep -q -E '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
+  then
+    echo "${public_ip}"
+    return 0
+  fi
+
+  #generic case
+  public_ip="$(curl -s 'https://ipv4.seeip.org')"
+  if echo -n "${public_ip}" | grep -q -E '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
+  then
+    echo "${public_ip}"
+    return 0
+  fi
+
+  return 1
+}
+
+configure_frontend(){
+  local public_ip="$1"
+  if [[ -z "${public_ip}" ]]
+  then
+    echo "Missing IP argument." >&2
+    return 1
+  fi
+  sudo sed -i "/\"baseURL\": /{s#\"baseURL\": \".*\"#\"baseURL\": \"http://${public_ip}:8083/management\"#}" /opt/graviteeio/apim/management-ui/constants.json
+  sudo sed -i "/\"baseURL\": /{s#\"baseURL\": \".*\"#\"baseURL\": \"http://${public_ip}:8083/portal\"#}" /opt/graviteeio/apim/portal-ui/assets/config.json
+  sudo sed -i "/^#portal:/c\portal:\n  url: \"http://${public_ip}:8085\"" /opt/graviteeio/apim/graviteeio-apim-rest-api/config/gravitee.yml
+}
+
 install_graviteeio() {
     echo "[graviteeio]
 name=graviteeio
@@ -49,11 +91,16 @@ metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
     sudo yum -q makecache -y --disablerepo='*' --enablerepo='graviteeio'
     sudo yum install -y graviteeio-apim-4x
     sudo systemctl daemon-reload
-    sudo systemctl start graviteeio-apim-gateway graviteeio-apim-rest-api
-    http_response=$(curl -w "%{http_code}" -o /tmp/curl_body "http://169.254.169.254/latest/meta-data/public-ipv4")
-    if [ $http_response == "200" ]; then
-        sudo sed -i -e "s/localhost/$(cat /tmp/curl_body)/g" /opt/graviteeio/apim/management-ui/constants.json
-        sudo sed -i -e "s;/portal;http://$(cat /tmp/curl_body):8083/portal;g" /opt/graviteeio/apim/portal-ui/assets/config.json
+
+    echo "configure frontend"
+    local public_ip
+    if public_ip="$(get_current_public_ip)"
+    then
+      echo "Public IP detected: ${public_ip}"
+      configure_frontend "${public_ip}"
+    else
+      echo "Public IP not found, configure with localhost"
+      configure_frontend "localhost"
     fi
 
     ui_port=$(sudo semanage port -l | grep 8084 | wc -l)
@@ -72,7 +119,15 @@ metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
         sudo semanage port -m -t http_port_t -p tcp 8085
     fi
 
+    sudo systemctl start graviteeio-apim-gateway graviteeio-apim-rest-api
     sudo systemctl restart nginx
+
+    # @see: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/using-and-configuring-firewalld_configuring-and-managing-networking#customizing-firewall-settings-for-a-specific-zone-to-enhance-security_working-with-firewalld-zones
+    if (command -v firewall-cmd > /dev/null) && ! (sudo firewall-cmd --list-ports | grep -q '8082-8085/tcp')
+    then
+      echo "firewall detected - open port range: 8082-8085/tcp"
+      sudo firewall-cmd --add-port=8082-8085/tcp
+    fi
 }
 
 install_openjdk() {
