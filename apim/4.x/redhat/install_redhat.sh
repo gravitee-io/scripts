@@ -82,9 +82,10 @@ install_graviteeio() {
     echo "[graviteeio]
 name=graviteeio
 baseurl=https://packagecloud.io/graviteeio/rpms/el/7/\$basearch
-gpgcheck=0
+gpgcheck=1
+repo_gpgcheck=1
 enabled=1
-gpgkey=https://packagecloud.io/graviteeio/rpms/gpgkey
+gpgkey=https://packagecloud.io/graviteeio/rpms/gpgkey,https://packagecloud.io/graviteeio/rpms/gpgkey/graviteeio-rpms-319791EF7A93C060.pub.gpg
 sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
@@ -131,7 +132,7 @@ metadata_expire=300" | sudo tee /etc/yum.repos.d/graviteeio.repo > /dev/null
 }
 
 install_openjdk() {
-    sudo yum install -y java-17-openjdk-devel
+    sudo yum install -y java-21-openjdk-devel
 }
 
 install_tools() {
