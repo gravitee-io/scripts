@@ -41,13 +41,15 @@ install_graviteeio() {
     echo "[graviteeio]
 name=graviteeio
 baseurl=https://packagecloud.io/graviteeio/rpms/el/7/\$basearch
-gpgcheck=0
+gpgcheck=1
+repo_gpgcheck=1
 enabled=1
-gpgkey=https://packagecloud.io/graviteeio/rpms/gpgkey
+gpgkey=https://packagecloud.io/graviteeio/rpms/gpgkey,https://packagecloud.io/graviteeio/rpms/gpgkey/graviteeio-rpms-319791EF7A93C060.pub.gpg
 sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300
 type=rpm-md" | sudo tee /etc/zypp/repos.d/graviteeio.repo > /dev/null
+    sudo zypper --gpg-auto-import-keys refresh graviteeio
     sudo zypper -n install graviteeio-apim-4x
     sudo systemctl daemon-reload
     sudo systemctl start graviteeio-apim-gateway graviteeio-apim-rest-api
@@ -67,7 +69,7 @@ install_openjdk() {
     sudo zypper refresh
   fi
 
-  sudo zypper -n install java-17-openjdk
+  sudo zypper -n install java-21-openjdk
 }
 
 main() {
